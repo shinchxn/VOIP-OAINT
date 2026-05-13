@@ -1,11 +1,11 @@
 <div align="center">
 
 ```text
-  __   __    ___ ___     ___  __  _  _  _____
- \ \ / /__ |_ _| _ \   / _ \/ _\| \| ||_   _|
-  \ V / _ \ | ||  _/  | (_) \__ \ .` |  | |
-   \_/\___/|___|_|     \___/|___/_|\_|  |_|
-  VoIP OSINT APEX v2.0 | LEA EDITION
+                                        __   __    ___ ___     ___  __  _  _  _____
+                                        \ \ / /__ |_ _| _ \   / _ \/ _\| \| ||_   _|
+                                         \ V / _ \ | ||  _/  | (_) \__ \ .` |  | |
+                                          \_/\___/|___|_|     \___/|___/_|\_|  |_|
+                                            VoIP OSINT APEX v2.0 | LEA EDITION
 ```
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
