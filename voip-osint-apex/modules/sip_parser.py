@@ -1,5 +1,8 @@
+# pyrefly: ignore [missing-import]
 import pyshark
+# pyrefly: ignore [missing-import]
 from scapy.all import sniff, IP, UDP, Raw
+# pyrefly: ignore [missing-import]
 import dpkt
 
 def parse_pcap(file_path):

@@ -1,7 +1,9 @@
+# pyrefly: ignore [missing-import]
 import aiohttp
 import asyncio
 import os
 import socket
+# pyrefly: ignore [missing-import]
 from ipwhois import IPWhois
 from dotenv import load_dotenv
 from utils.cache import Cache

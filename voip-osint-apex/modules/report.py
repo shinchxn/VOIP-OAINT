@@ -3,7 +3,9 @@ import os
 import csv
 from datetime import datetime
 import hashlib
+# pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
+# pyrefly: ignore [missing-import]
 from reportlab.lib.pagesizes import letter
 
 os.makedirs("outputs/reports", exist_ok=True)

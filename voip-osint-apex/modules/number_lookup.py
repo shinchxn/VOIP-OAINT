@@ -1,5 +1,8 @@
+# pyrefly: ignore [missing-import]
 import phonenumbers
+# pyrefly: ignore [missing-import]
 from phonenumbers import geocoder, carrier, timezone
+# pyrefly: ignore [missing-import]
 import requests
 import os
 from dotenv import load_dotenv

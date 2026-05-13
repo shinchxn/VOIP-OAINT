@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import nmap
 import subprocess
 import socket

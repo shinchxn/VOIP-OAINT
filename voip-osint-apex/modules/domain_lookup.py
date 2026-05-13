@@ -1,4 +1,6 @@
+# pyrefly: ignore [missing-import]
 import whois
+# pyrefly: ignore [missing-import]
 import dns.resolver
 import requests
 import os

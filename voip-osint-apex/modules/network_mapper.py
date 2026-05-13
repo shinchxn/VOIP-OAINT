@@ -1,5 +1,6 @@
 import socket
 import subprocess
+# pyrefly: ignore [missing-import]
 from scapy.all import sr1, IP, UDP
 
 def trace_voip_path(ip):

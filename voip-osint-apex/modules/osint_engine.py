@@ -1,7 +1,9 @@
 import subprocess
 import asyncio
+# pyrefly: ignore [missing-import]
 import httpx
 import json
+# pyrefly: ignore [missing-import]
 import requests
 
 def platform_check(email):
