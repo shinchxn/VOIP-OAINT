@@ -29,7 +29,7 @@ def sipvicious_scan(ip):
             "python3", "-m", "sipvicious.svmap", ip, "--fp"
         ], capture_output=True, text=True)
         return result.stdout
-    except:
+    except Exception:
         return ""
 
 def masscan_quick(ip_range):
@@ -38,7 +38,7 @@ def masscan_quick(ip_range):
             "sudo", "masscan", ip_range, "-p", "5060,5061", "--rate", "1000"
         ], capture_output=True, text=True)
         return result.stdout
-    except:
+    except Exception:
         return ""
 
 def banner_grab(ip, port=5060):
@@ -49,5 +49,5 @@ def banner_grab(ip, port=5060):
         s.sendto(req.encode(), (ip, port))
         data, _ = s.recvfrom(1024)
         return data.decode(errors='ignore')
-    except:
+    except Exception:
         return ""

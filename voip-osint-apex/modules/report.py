@@ -3,19 +3,24 @@ import os
 import csv
 from datetime import datetime
 import hashlib
+import logging
 # pyrefly: ignore [missing-import]
 from reportlab.pdfgen import canvas
 # pyrefly: ignore [missing-import]
 from reportlab.lib.pagesizes import letter
 
+log = logging.getLogger("report")
 os.makedirs("outputs/reports", exist_ok=True)
+
 
 def generate_json(data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = f"outputs/reports/report_{timestamp}.json"
     with open(path, "w") as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f, indent=4, default=str)
+    log.info(f"[Report] JSON → {path}")
     return path
+
 
 def generate_pdf(data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -26,9 +31,11 @@ def generate_pdf(data):
     c.setFont("Helvetica-Bold", 16)
     c.drawString(50, 750, "VoIP OSINT APEX - Investigation Report")
     c.setFont("Helvetica", 12)
-    c.drawString(50, 730, f"Case ID: {hashlib.md5(str(timestamp).encode()).hexdigest()[:8].upper()}")
+    # Use SHA-256 for forensic-grade case IDs (not MD5)
+    case_hash = hashlib.sha256(str(timestamp).encode()).hexdigest()[:12].upper()
+    c.drawString(50, 730, f"Case ID: {case_hash}")
     c.drawString(50, 710, f"Date: {timestamp}")
-    c.drawString(50, 690, "Tool version: 2.0")
+    c.drawString(50, 690, "Tool version: 3.0")
     
     risk = "LOW"
     conf = 0
@@ -71,14 +78,15 @@ def generate_pdf(data):
     c.drawString(50, 30, "FOR LAW ENFORCEMENT USE ONLY")
     c.save()
     
-    # Evidence hash
-    with open(path, "rb") as f:
-        h = hashlib.sha256(f.read()).hexdigest()
+    # SHA-256 evidence integrity hash
+    file_hash = _sha256_file(path)
+    log.info(f"[Report] PDF → {path}  SHA-256: {file_hash}")
     
     # Evidence log
-    generate_evidence_log({"pdf_path": path, "sha256": h})
+    generate_evidence_log({"pdf_path": path, "sha256": file_hash})
         
     return path
+
 
 def generate_csv(data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -95,14 +103,25 @@ def generate_csv(data):
     with open(path, "w", newline='') as f:
         w = csv.writer(f)
         w.writerow(flat_data.keys())
-        w.writerow(flat_data.values())
+        w.writerow([str(v) for v in flat_data.values()])
+    log.info(f"[Report] CSV → {path}")
     return path
+
 
 def generate_evidence_log(data):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = f"outputs/reports/audit_{timestamp}.log"
     with open(path, "a") as f:
         f.write(f"[{timestamp}] AUDIT RECORD\n")
-        f.write(json.dumps(data, indent=2))
+        f.write(json.dumps(data, indent=2, default=str))
         f.write("\n")
     return path
+
+
+def _sha256_file(path: str) -> str:
+    """Compute SHA-256 hash of a file for forensic integrity verification."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()

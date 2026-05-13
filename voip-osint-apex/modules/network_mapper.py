@@ -16,7 +16,7 @@ def trace_voip_path(ip):
                 break
             else:
                 path.append({"hop": i, "ip": reply.src})
-    except:
+    except Exception:
         path = [{"status": "simulated"}]
     return path
 
@@ -34,7 +34,7 @@ def sip_server_fingerprint(ip):
                 k, v = line.split(":", 1)
                 headers[k.strip()] = v.strip()
         return headers
-    except:
+    except Exception:
         return {}
 
 def rtp_server_map(pcap_file):

@@ -5,12 +5,17 @@ from scapy.all import sniff, IP, UDP, Raw
 # pyrefly: ignore [missing-import]
 import dpkt
 
+import logging
+log = logging.getLogger("sip_parser")
+
 def parse_pcap(file_path):
     results = []
     try:
         cap = pyshark.FileCapture(file_path, display_filter="sip")
         for pkt in cap:
             try:
+                if not hasattr(pkt, 'sip'):
+                    continue
                 sip = pkt.sip
                 data = {
                     "src_ip": pkt.ip.src,
@@ -25,11 +30,13 @@ def parse_pcap(file_path):
                     "p_asserted_identity": getattr(sip, "p_asserted_identity", "")
                 }
                 results.append(data)
-            except AttributeError:
-                pass
+            except AttributeError as e:
+                log.debug(f"[SIP] AttributeError parsing packet: {e}")
         cap.close()
-    except Exception:
-        pass
+    except pyshark.capture.capture.TSharkCrashException as e:
+        log.error(f"[SIP] TShark crashed: {e}")
+    except Exception as e:
+        log.warning(f"[SIP] Failed to parse PCAP {file_path}: {e}")
     return results
 
 def parse_rtp(file_path):
@@ -40,17 +47,19 @@ def parse_rtp(file_path):
             for ts, buf in pcap:
                 try:
                     eth = dpkt.ethernet.Ethernet(buf)
-                    if isinstance(eth.data, dpkt.ip.IP):
-                        ip = eth.data
-                        if isinstance(ip.data, dpkt.udp.UDP):
-                            udp = ip.data
-                            if udp.sport >= 10000 and udp.dport >= 10000:
-                                import socket
-                                results.add(socket.inet_ntoa(ip.src))
-                except Exception:
-                    pass
-    except Exception:
-        pass
+                    if not isinstance(eth.data, dpkt.ip.IP):
+                        continue
+                    ip = eth.data
+                    if isinstance(ip.data, dpkt.udp.UDP):
+                        udp = ip.data
+                        # Heuristic: RTP ports are usually high and symmetric
+                        if udp.sport >= 10000 and udp.dport >= 10000:
+                            import socket
+                            results.add(socket.inet_ntoa(ip.src))
+                except Exception as e:
+                    log.debug(f"[RTP] Packet parse error: {e}")
+    except Exception as e:
+        log.warning(f"[RTP] Failed to read PCAP {file_path}: {e}")
     return list(results)
 
 def live_sniff(callback, iface="eth0"):
@@ -65,15 +74,16 @@ def live_sniff(callback, iface="eth0"):
                     data = {"src_ip": src_ip, "dst_ip": dst_ip, "method": "INVITE"}
                     lines = payload.split("\r\n")
                     for line in lines:
-                        if line.startswith("From:"): data["from"] = line
-                        elif line.startswith("To:"): data["to"] = line
-                        elif line.startswith("User-Agent:"): data["user_agent"] = line
-                        elif line.startswith("X-Forwarded-For:"): data["x_forwarded_for"] = line
+                        if line.startswith("From:"): data["from"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("To:"): data["to"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("User-Agent:"): data["user_agent"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("X-Forwarded-For:"): data["x_forwarded_for"] = line.split(":", 1)[1].strip()
                     
                     callback(data)
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"[Live] Packet processing error: {e}")
     try:
+        log.info(f"[Live] Starting sniff on {iface}")
         sniff(filter="udp port 5060", prn=process_pkt, store=0, iface=iface)
     except Exception as e:
-        print(f"Error sniffing: {e}")
+        log.error(f"[Live] Sniffing failed: {e}")
