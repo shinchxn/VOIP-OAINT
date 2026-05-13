@@ -23,11 +23,23 @@
 
 | Module | Description |
 | :--- | :--- |
-| 📞 **Number Intelligence** | Phone number parsing, disposable/VoIP detection, carrier lookup, and fraud scoring (IPQualityScore, Numverify). |
+| 📞 **Number Intelligence** | Phone number parsing, disposable/VOIP detection, carrier lookup, and fraud scoring (IPQualityScore, Numverify). |
 | 🌍 **IP Intelligence** | Correlates IP data from IP-API, AbuseIPDB, Shodan, VirusTotal, ProxyCheck, and Tor exit nodes. |
 | 🔍 **Domain Reconnaissance** | Gathers WHOIS, DNS records, Certificate Transparency logs (`crt.sh`), and integrates `theHarvester`. |
 | 📡 **SIP & RTP Analysis** | Live network sniffing and PCAP parsing to extract SIP headers, user agents, forwarding trails, and media server IPs. |
 | 🧠 **Threat Correlation** | Automates evidence chain building, confidence scoring, attribution, and generates structured subpoena targets. |
+
+---
+
+## 🚀 Quick Start
+
+Get the environment up and running in minutes:
+
+```bash
+# Clone the repository
+git clone https://github.com/shinchxn/VOIP-OAINT.git
+cd VOIP-OAINT
+```
 
 ---
 
@@ -155,7 +167,11 @@ pip install -r requirements.txt
 ```
 
 ### API Keys (`.env`)
-Configure your keys in `voip-osint-apex/.env`:
+To protect your credentials, we use a `.env` file that is ignored by Git. 
+
+1. Copy the template file: `cp voip-osint-apex/.env.example voip-osint-apex/.env`
+2. Open `voip-osint-apex/.env` and add your keys:
+
 | Key | Service | Use Case |
 | :--- | :--- | :--- |
 | `IPQS_KEY` | [IPQualityScore](https://www.ipqualityscore.com/) | Fraud scoring & Carrier detection |
