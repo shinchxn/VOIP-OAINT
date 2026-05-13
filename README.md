@@ -38,7 +38,7 @@ Get the environment up and running in minutes:
 ```bash
 # Clone the repository
 git clone https://github.com/shinchxn/VOIP-OAINT.git
-cd VOIP-OAINT
+cd VOIP-OAINT/voip-osint-apex
 ```
 
 ---
@@ -136,7 +136,7 @@ sudo systemctl restart asterisk
 sudo asterisk -rx "pjsip show endpoints"
 
 # Start the VOIP-OAINT live sniffer
-sudo python main.py live --iface lo --alert
+sudo python3 main.py live --iface lo --alert
 ```
 
 ---
@@ -169,8 +169,8 @@ pip install -r requirements.txt
 ### API Keys (`.env`)
 To protect your credentials, we use a `.env` file that is ignored by Git. 
 
-1. Copy the template file: `cp voip-osint-apex/.env.example voip-osint-apex/.env`
-2. Open `voip-osint-apex/.env` and add your keys:
+1. Copy the template file: `cp .env.example .env`
+2. Open `.env` and add your keys:
 
 | Key | Service | Use Case |
 | :--- | :--- | :--- |
@@ -215,11 +215,35 @@ Gather WHOIS, DNS, and Certificate Transparency data.
 # View specific options
 python main.py domain --help
 
-# Run analysis
-python main.py domain target-voip.com --save
+# Run analysis with external harvesting
+python main.py domain target-voip.com --harvest --save
 ```
 
-### 4️⃣ PCAP Forensics
+### 4️⃣ Email & Domain OSINT
+Cross-reference emails with breached databases and social platforms.
+```bash
+# Analyze email
+python main.py osint --email investigator@example.com
+
+# Run domain reconnaissance (Harvester + DNSRecon)
+python main.py osint --domain target-voip.com
+```
+
+### 5️⃣ Network Scanning
+Perform high-speed scans for VoIP infrastructure.
+```bash
+# Masscan a range for SIP ports
+python main.py scan 192.168.1.0/24
+```
+
+### 6️⃣ SIP Fingerprinting
+Identify media server types and trace network paths.
+```bash
+# Fingerprint a SIP server
+python main.py fingerprint 104.21.45.67
+```
+
+### 7️⃣ PCAP Forensics
 Parse existing network captures for SIP and RTP metadata.
 ```bash
 # View specific options
@@ -229,7 +253,7 @@ python main.py pcap --help
 python main.py pcap evidence.pcap --rtp --save
 ```
 
-### 5️⃣ Live Investigative Sniffing
+### 8️⃣ Live Investigative Sniffing
 Monitor live network interfaces for real-time SIP traffic.
 ```bash
 # View specific options
@@ -239,7 +263,7 @@ python main.py live --help
 sudo python main.py live --iface eth0 --alert
 ```
 
-### 6️⃣ Full Intelligence Pipeline
+### 9️⃣ Full Intelligence Pipeline
 Correlate multiple entities (Number + IP + Domain) into a single forensic report.
 ```bash
 # View specific options
@@ -247,6 +271,12 @@ python main.py full --help
 
 # Run full pipeline
 python main.py full --number +14155552671 --ip 1.1.1.1 --domain example.com --save --pdf
+```
+
+### 🔟 Report Correlation
+Correlate existing investigative reports.
+```bash
+python main.py correlate-cmd --report outputs/reports/investigation_123.json
 ```
 
 ---
