@@ -14,6 +14,7 @@ from ipwhois import IPWhois
 from core.base_plugin import BasePlugin, PluginMetadata
 from utils.cache import Cache
 from utils.config import get_keys
+from realtime import emit
 
 log = logging.getLogger("ip_plugin")
 keys = get_keys()
@@ -74,6 +75,21 @@ class IPPlugin(BasePlugin):
             result["risk_level"] = "LOW"
 
         cache.set(cache_key, result)
+
+        # Real-time broadcast
+        severity = "CRITICAL" if result["risk_level"] == "CRITICAL" else \
+                   "WARNING"  if result["risk_level"] == "HIGH" else "INFO"
+        event_type = "THREAT_HIT" if severity != "INFO" else "IP_INTEL_DONE"
+        await emit(event_type, {
+            "ip":          result["ip"],
+            "risk":        result["risk_level"],
+            "abuse_score": result["abuse_score"],
+            "is_tor":      result["is_tor"],
+            "is_vpn":      result["is_vpn"],
+            "isp":         result["isp"],
+            "country":     result["country"],
+        }, severity=severity)
+
         return result
 
     async def _fetch_json(self, session: aiohttp.ClientSession, url: str, headers: Dict = None, service: str = "unknown") -> Dict:

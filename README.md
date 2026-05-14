@@ -5,15 +5,18 @@
                                          \ \ / /__ |_ _| _ \   / _ \/ _\| \| ||_   _|
                                          \ V / _ \ | ||  _/  | (_) \__ \ .` |  | |
                                           \_/\___/|___|_|     \___/|___/_|\_|  |_|
-                                            VoIP OSINT APEX v2.0 | LEA EDITION
+                                            VoIP OSINT APEX v3.0 | LEA EDITION
 ```
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Platform](https://img.shields.io/badge/platform-Ubuntu_22.04-orange.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)]()
-[![Status](https://img.shields.io/badge/status-Active-success.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Kali_Linux_%7C_Docker-orange.svg)](https://www.kali.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Status](https://img.shields.io/badge/status-v3.0_Production-success.svg)]()
+[![Forensic](https://img.shields.io/badge/forensic-SHA--256_Integrity-blueviolet.svg)]()
 
-**Advanced, CLI-based Threat Intelligence Tool for Law Enforcement & Cybersecurity Professionals**
+**Enterprise-grade VoIP Forensic Intelligence Platform for Law Enforcement & Cybersecurity Professionals**
+
+*Fully asynchronous · Real-time event bus · SHA-256 audit trail · Docker-ready*
 
 </div>
 
@@ -25,354 +28,229 @@
 
 | Module | Description |
 | :--- | :--- |
-| 📞 **Number Intelligence** | Phone number parsing, disposable/VOIP detection, carrier lookup, and fraud scoring (IPQualityScore, Numverify). |
-| 🌍 **IP Intelligence** | Correlates IP data from IP-API, AbuseIPDB, Shodan, VirusTotal, ProxyCheck, and Tor exit nodes. |
-| 🔍 **Domain Reconnaissance** | Gathers WHOIS, DNS records, Certificate Transparency logs (`crt.sh`), and integrates `theHarvester`. |
-| 📡 **SIP & RTP Analysis** | Live network sniffing and PCAP parsing to extract SIP headers, user agents, forwarding trails, and media server IPs. |
-| 🧠 **Threat Correlation** | Automates evidence chain building, confidence scoring, attribution, and generates structured subpoena targets. |
+| 📞 **Number Intelligence** | Phone number parsing, disposable/VOIP detection, carrier lookup, fraud scoring (IPQualityScore, Numverify). |
+| 🌍 **IP Intelligence** | Multi-source IP correlation: AbuseIPDB, Shodan, VirusTotal, ProxyCheck, Tor exit nodes — async with rate-limiting. |
+| 🔍 **Domain Reconnaissance** | WHOIS, DNS, Certificate Transparency (`crt.sh`), SRV records, integrated `theHarvester`. |
+| 📡 **SIP & RTP Analysis** | Live network sniffing and PCAP parsing — extracts SIP headers, user agents, forwarding trails, media server IPs. |
+| 🧠 **Threat Correlation** | Confidence-scored attribution engine with MITRE ATT&CK mappings, real LEA contact lookup, subpoena target generation. |
+| ⚡ **Real-time Event Bus** | Async pub/sub bus (`realtime.py`) — broadcasts THREAT_HIT, HLR_ALERT events to live CLI and future integrations. |
 
-### Upgrade Modules (v2.0)
+### v3.0 Intelligence Modules
 
 | Module | Description |
 | :--- | :--- |
-| 🛰️ **WebRTC/STUN Tracker** | Captures real IPs leaking from WhatsApp, Telegram, and Google Meet via STUN binding requests — bypasses VPN cover. |
-| 📶 **HLR / Carrier Intel** | IMSI/SS7 awareness — checks if a number is roaming, ported, or active without real SS7 access using HLR lookup APIs. |
-| 🛡️ **Threat Feeds** | Autonomous blacklist integration — checks IPs against 6+ VoIP/abuse feeds (Emerging Threats, Blocklist.de VoIP/SIP, Spamhaus DROP, etc.) with local caching. |
-| 🌳 **Call Graph Visualizer** | Builds ASCII call flow trees from SIP packet data using Rich and exports Mermaid sequence diagrams for HTML reports. |
-| 🗄️ **Case Management** | SQLite-based persistent case storage — save, search, reload, and export past investigations without PostgreSQL. |
-| 🔢 **Number Permutator** | Generates neighboring/related number variants used by scammer clusters (last-digit, sequential, area-code swap modes). |
-| 🌐 **Passive DNS** | Tracks historical IP changes for a domain using HackerTarget, SecurityTrails, and crt.sh. |
-| 📜 **Subpoena Generator** | Produces properly formatted legal PDF documents (Law Enforcement Request for Records) with SHA-256 integrity hashes. |
+| 🛰️ **WebRTC/STUN Tracker** | Captures real IPs leaking from WhatsApp, Telegram, Google Meet via STUN — bypasses VPN cover. |
+| 📶 **HLR / Carrier Intel** | IMSI/SS7 awareness — roaming, porting, active status via `hlr-lookups.com` + Numverify fallback. |
+| 🛡️ **Threat Feeds** | Autonomous blacklist checking against 6+ VoIP/abuse feeds with 6-hour local cache. |
+| 🌳 **Call Graph Visualizer** | ASCII call flow trees from SIP data + Mermaid diagram export for HTML reports. |
+| 🗄️ **Case Management** | Async SQLite case storage — save, search, reload, export all investigations. |
+| 🔢 **Number Permutator** | Generates scammer cluster variants (last-digit, sequential, area-code swap). |
+| 🌐 **Passive DNS** | Historical IP tracking for domains via HackerTarget, SecurityTrails, crt.sh. |
+| 📜 **Subpoena Generator** | Legally-formatted PDF records request with SHA-256 integrity hash. |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start — Docker (Recommended)
 
-Get the environment up and running in minutes:
+The fastest way to run APEX with zero dependency conflicts.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) **or** `docker.io` (Kali/Ubuntu)
 
 ```bash
-# Clone the repository
 git clone https://github.com/shinchxn/VOIP-OAINT.git
 cd VOIP-OAINT/voip-osint-apex
+cp .env.example .env
+nano .env   # Add your API keys
 ```
 
----
+### One-command Launch
 
-## 🖥️ Premium CLI Experience
+**Kali Linux / Ubuntu:**
+```bash
+chmod +x quickstart.sh && ./quickstart.sh
+```
 
-VOIP-OAINT is designed with a high-fidelity Command Line Interface (CLI) using the **`rich`** library to provide investigators with a clear and actionable view of complex data:
+**Windows (PowerShell as Admin):**
+```powershell
+.\quickstart.ps1
+```
 
-*   **📊 Live Progress Monitoring**: Real-time status indicators during multi-threaded API lookups and network scans.
-*   **🎨 Color-Coded Intelligence**: Instant visual feedback on risk levels (Green = Low, Yellow = Medium, Red = High, Crimson = Critical).
-*   **📋 Structured Data Panels**: Cleanly formatted tables and panels for SIP packet headers, WHOIS records, and attribution hints.
-*   **📑 Interactive Audit Logs**: Styled console logging that separates investigative findings from system status messages.
+**Manual:**
+```bash
+docker compose build
+docker compose up -d redis
+docker compose run --rm apex --help
+```
 
----
-
-## 🛠️ Environment Setup
-
-### 1️⃣ System Prerequisites
-Run the following commands on a clean **Ubuntu 22.04** environment:
+### Docker Usage Examples
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y asterisk nmap sngrep tshark wireshark \
-  sipp redis-server masscan whois \
-  python3.11 python3-pip python3-venv \
-  git curl jq net-tools
-```
+# Phone number investigation
+docker compose run --rm apex number +14155552671 --save --pdf
 
-### 2️⃣ External Tool Integration
-```bash
-# SIPVicious
-pip install sipvicious
+# IP deep-dive with port scan
+docker compose run --rm apex ip 104.21.45.67 --ports --save
 
-# theHarvester
-cd /opt && sudo git clone https://github.com/laramies/theHarvester
-cd theHarvester && pip install -r requirements/base.txt
+# HLR carrier lookup
+docker compose run --rm apex hlr +447911123456
 
-# DNSRecon
-sudo git clone https://github.com/darkoperator/dnsrecon /opt/dnsrecon
-pip install -r /opt/dnsrecon/requirements.txt
-```
+# Analyze a PCAP file
+docker compose run --rm -v $(pwd)/evidence:/evidence:ro apex pcap /evidence/capture.pcap --rtp --save
 
----
+# Live sniffer (requires privileged + host network)
+docker compose run --rm --privileged --network host apex live --iface eth0 --alert
 
-## 📞 ASTERISK LAB SETUP — EXACT COMMANDS
+# Full correlated forensic report
+docker compose run --rm apex full --number +14155552671 --ip 104.21.45.67 --domain evil.com --save --pdf
 
-For analyzing live SIP traffic, configure a local Asterisk laboratory to simulate illicit VoIP forwarding:
-
-### 1️⃣ Configure PJSIP Endpoints
-Edit `/etc/asterisk/pjsip.conf`:
-```ini
-[transport-udp]
-type=transport
-protocol=udp
-bind=0.0.0.0
-
-[6001]
-type=endpoint
-context=from-internal
-disallow=all
-allow=ulaw
-auth=6001
-aors=6001
-
-[6001]
-type=auth
-auth_type=userpass
-password=unsecurepassword
-username=6001
-
-[6001]
-type=aor
-max_contacts=1
-```
-
-### 2️⃣ Configure Dialplan (Forwarding Simulation)
-Edit `/etc/asterisk/extensions.conf`:
-```ini
-[from-internal]
-exten => 100,1,NoOp(VOIP OSINT TEST CALL)
- same => n,Dial(PJSIP/6001,20)
- same => n,Hangup()
-
-exten => 200,1,NoOp(FORWARDING TRACE TEST)
- same => n,Set(CALLERID(num)=+14155552671)
- same => n,Dial(PJSIP/6001,,b(handler^s^1))
-```
-
-### 3️⃣ Initialize Service & Sniffing
-```bash
-# Restart Asterisk
-sudo systemctl restart asterisk
-
-# Verify endpoints
-sudo asterisk -rx "pjsip show endpoints"
-
-# Start the VOIP-OAINT live sniffer
-sudo python3 main.py live --iface lo --alert
-```
-
----
-
-## ⚙️ Project Configuration
-
-### 1️⃣ Python Virtual Environment
-It is highly recommended to use a virtual environment to manage dependencies:
-
-```bash
-# Create the environment
-python3.11 -m venv venv
-
-# Activate on Linux/macOS
-source venv/bin/activate
-
-# Activate on Windows (PowerShell)
-# .\venv\Scripts\Activate.ps1
-```
-
-### 2️⃣ Dependency Installation
-Navigate to the project directory and install the required forensic libraries:
-
-```bash
-cd voip-osint-apex
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### API Keys (`.env`)
-To protect your credentials, we use a `.env` file that is ignored by Git. 
-
-1. Copy the template file: `cp .env.example .env`
-2. Open `.env` and add your keys:
-
-| Key | Service | Use Case |
-| :--- | :--- | :--- |
-| `IPQS_KEY` | [IPQualityScore](https://www.ipqualityscore.com/) | Fraud scoring & Carrier detection |
-| `SHODAN_KEY` | [Shodan.io](https://www.shodan.io/) | Infrastructure & Port scanning |
-| `ABUSEIPDB_KEY` | [AbuseIPDB](https://www.abuseipdb.com/) | IP reputation & Reporting |
-| `VIRUSTOTAL_KEY` | [VirusTotal](https://www.virustotal.com/) | Malware & Domain analysis |
-| `NUMVERIFY_KEY` | [Numverify](https://numverify.com/) | Number validation & HLR fallback |
-| `SECURITYTRAILS_KEY` | [SecurityTrails](https://securitytrails.com/) | Passive DNS historical lookups (optional) |
-
----
-
-## 🚀 Usage Guide
-
-To see the global help menu and all 18 available commands:
-```bash
-python main.py --help
-```
-
-### 1️⃣ Number Analysis
-Analyze phone numbers for carrier data, fraud scores, and line types.
-```bash
-python main.py number +14155552671 --save --pdf
-```
-
-### 2️⃣ IP Intelligence
-Deep-dive into IP reputation, VPN/Tor detection, and open ports.
-```bash
-python main.py ip 104.21.45.67 --ports --save
-```
-
-### 3️⃣ Domain Reconnaissance
-Gather WHOIS, DNS, and Certificate Transparency data.
-```bash
-python main.py domain target-voip.com --harvest --save
-```
-
-### 4️⃣ Email & Domain OSINT
-Cross-reference emails with breached databases and social platforms.
-```bash
-# Analyze email
-python main.py osint --email investigator@example.com
-
-# Run domain reconnaissance (Harvester + DNSRecon)
-python main.py osint --domain target-voip.com
-```
-
-### 5️⃣ Network Scanning
-Perform high-speed scans for VoIP infrastructure.
-```bash
-python main.py scan 192.168.1.0/24
-```
-
-### 6️⃣ SIP Fingerprinting
-Identify media server types and trace network paths.
-```bash
-python main.py fingerprint 104.21.45.67
-```
-
-### 7️⃣ PCAP Forensics
-Parse existing network captures for SIP and RTP metadata.
-```bash
-python main.py pcap evidence.pcap --rtp --save
-```
-
-### 8️⃣ Live Investigative Sniffing
-Monitor live network interfaces for real-time SIP traffic.
-```bash
-sudo python main.py live --iface eth0 --alert
-```
-
-### 9️⃣ Full Intelligence Pipeline
-Correlate multiple entities (Number + IP + Domain) into a single forensic report.
-```bash
-python main.py full --number +14155552671 --ip 1.1.1.1 --domain example.com --save --pdf
-```
-
-### 🔟 Report Correlation
-Correlate existing investigative reports.
-```bash
-python main.py correlate --report outputs/reports/investigation_123.json
-```
-
----
-
-## 🆕 Upgrade Module Commands (v2.0)
-
-### 1️⃣ WebRTC/STUN Detection
-Detect real IPs leaking through WebRTC STUN binding requests from WhatsApp, Telegram, Google Meet, etc.
-```bash
-# Sniff for 60 seconds on eth0
-sudo python main.py stun --iface eth0 --duration 60
-
-# Sniff for 120 seconds, save results
-sudo python main.py stun --iface wlan0 --duration 120 --save
-```
-
-### 2️⃣ HLR Carrier Lookup
-Query carrier intelligence — roaming status, ported flag, line type.
-```bash
-python main.py hlr +14155552671
-```
-
-### 3️⃣ Threat Feed Checking
-Check an IP against 6+ VoIP/abuse blacklists with weighted scoring.
-```bash
-# Standard check (uses 6-hour cache)
-python main.py feeds 104.21.45.67
-
-# Force-refresh all feeds first
-python main.py feeds 104.21.45.67 --refresh
-```
-
-### 4️⃣ Call Graph Visualization
-Render SIP call flows as ASCII trees and optionally export Mermaid diagrams.
-```bash
-# From a PCAP file
-python main.py graph --pcap evidence.pcap
-
-# From a saved case, with Mermaid export
-python main.py graph --case-id 5 --mermaid
-```
-
-### 5️⃣ Case Management
-Persistent SQLite case storage for all investigations.
-```bash
-# List all past investigations
-python main.py cases
-
-# Reload a specific case
-python main.py cases --id 5
-
-# Search cases by number, IP, or domain
-python main.py cases --search "14155"
-
-# Export all cases to CSV
-python main.py cases --export
-```
-
-### 6️⃣ Number Permutation
-Generate neighboring number variants used by scammer clusters.
-```bash
-# Default modes (last_digit + sequential)
-python main.py permute +14155552671
-
-# Custom modes
-python main.py permute +14155552671 --modes "last_digit,sequential,swap_area"
-```
-
-### 7️⃣ Passive DNS History
-Track historical IP changes for any domain.
-```bash
-# Full aggregated lookup
-python main.py pdns target-voip.com
-
-# Timeline view (sorted chronologically)
-python main.py pdns target-voip.com --timeline
-```
-
-### 8️⃣ Subpoena PDF Generation
-Generate a formatted legal records request document.
-```bash
-python main.py subpoena \
-  --case-id CASE-2026-001 \
-  --number "+14155552671" \
-  --platform "TextNow" \
-  --ip "104.21.45.67" \
-  --officer "Det. John Smith" \
-  --badge "B-4521" \
+# Generate subpoena PDF
+docker compose run --rm apex subpoena \
+  --case-id CASE-2026-001 --number "+14155552671" \
+  --platform "Twilio" --ip "104.21.45.67" \
+  --officer "Det. Jane Smith" --badge "B-4521" \
   --agency "Cyber Crime Division"
 ```
 
 ---
 
-## 📊 Outputs & Evidence
+## 🐉 Native Install — Kali Linux
 
-All outputs are organized under the `outputs/` directory:
+For live investigations requiring raw packet capture.
+
+### 1️⃣ System Dependencies
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y \
+    nmap masscan tshark wireshark tcpdump traceroute \
+    whois net-tools curl wget git jq \
+    libpcap-dev libssl-dev libffi-dev \
+    python3.11 python3-pip python3-venv
+
+# Allow tshark without sudo
+sudo usermod -aG wireshark $USER && newgrp wireshark
+```
+
+### 2️⃣ External Tools
+
+```bash
+# SIPVicious (svmap, svwar)
+pip3 install sipvicious
+
+# theHarvester
+sudo git clone https://github.com/laramies/theHarvester /opt/theHarvester
+cd /opt/theHarvester && pip3 install -r requirements/base.txt
+sudo ln -s /opt/theHarvester/theHarvester.py /usr/local/bin/theHarvester
+```
+
+### 3️⃣ Python Environment
+
+```bash
+cd /opt
+sudo git clone https://github.com/shinchxn/VOIP-OAINT.git voip-apex
+cd voip-apex/voip-osint-apex
+
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip && pip install -r requirements.txt
+```
+
+### 4️⃣ Raw Socket Privileges (Scapy)
+
+```bash
+# Option A: Run as root
+sudo python main.py live --iface eth0 --alert
+
+# Option B: Grant raw socket capability (recommended — no root for normal commands)
+sudo setcap cap_net_raw+eip $(readlink -f venv/bin/python3)
+# Now scapy and nmap UDP work without sudo
+python main.py fingerprint 104.21.45.67
+```
+
+### 5️⃣ Configure API Keys
+
+```bash
+cp .env.example .env && nano .env
+```
+
+### 6️⃣ Verify & Run
+
+```bash
+source venv/bin/activate
+python main.py keys      # Check key status
+python main.py number +14155552671
+```
+
+### Recommended Kali Aliases
+
+```bash
+# Add to ~/.zshrc
+alias apex='cd /opt/voip-apex/voip-osint-apex && source venv/bin/activate && python main.py'
+alias apex-d='docker compose -f /opt/voip-apex/voip-osint-apex/docker-compose.yml run --rm apex'
+
+# Usage:
+apex number +14155552671
+apex-d ip 8.8.8.8 --ports
+```
+
+---
+
+## ⚙️ API Keys (`.env`)
+
+Copy `.env.example` to `.env` and populate:
+
+| Key | Service | Free? |
+| :--- | :--- | :--- |
+| `IPQS_KEY` | [IPQualityScore](https://ipqualityscore.com/) | ✅ Free tier |
+| `SHODAN_KEY` | [Shodan.io](https://shodan.io/) | ✅ Free (limited) |
+| `ABUSEIPDB_KEY` | [AbuseIPDB](https://abuseipdb.com/) | ✅ Free tier |
+| `VIRUSTOTAL_KEY` | [VirusTotal](https://virustotal.com/) | ✅ Free tier |
+| `NUMVERIFY_KEY` | [Numverify](https://numverify.com/) | ✅ 100 req/mo |
+| `HLRLOOKUPS_KEY` | [hlr-lookups.com](https://www.hlr-lookups.com/) | 💰 €0.01/lookup |
+| `SECURITYTRAILS_KEY` | [SecurityTrails](https://securitytrails.com/) | ✅ Free tier |
+| `HIBP_KEY` | [HaveIBeenPwned](https://haveibeenpwned.com/API/Key) | 💰 Paid |
+
+---
+
+## 🖥️ Full CLI Reference
+
+```bash
+python main.py --help   # All commands
+```
+
+| Command | Description |
+| :--- | :--- |
+| `number <phone>` | Phone number intelligence + fraud scoring |
+| `ip <addr>` | IP reputation, VPN/Tor detection, ports |
+| `domain <domain>` | WHOIS, DNS, certs, theHarvester |
+| `hlr <phone>` | HLR carrier lookup (roaming, porting) |
+| `full` | Correlated number + IP + domain report |
+| `scan <range>` | High-speed VoIP port scan |
+| `fingerprint <ip>` | SIP server fingerprinting + hop trace |
+| `pcap <file>` | Parse PCAP for SIP/RTP metadata |
+| `live` | Live interface sniffing with alerts |
+| `feeds <ip>` | Check IP against 6+ threat feed blacklists |
+| `stun` | WebRTC/STUN IP leak detection |
+| `graph` | Render SIP call flow ASCII + Mermaid |
+| `cases` | List, search, export past investigations |
+| `permute <phone>` | Generate number variants for cluster analysis |
+| `pdns <domain>` | Passive DNS history lookup |
+| `subpoena` | Generate legal records request PDF |
+| `keys` | Show API key configuration status |
+
+---
+
+## 📊 Outputs & Evidence
 
 | Directory | Contents |
 | :--- | :--- |
-| `outputs/reports/` | JSON, PDF, CSV investigation reports with SHA-256 integrity hashes |
-| `outputs/logs/` | Timestamped audit trail logs |
-| `outputs/pcaps/` | Captured network traffic files |
-| `outputs/subpoenas/` | Generated legal request PDFs |
-| `outputs/feed_cache/` | Locally cached threat feed data (6-hour TTL) |
-| `outputs/cases.db` | SQLite database of all saved investigations |
-| `outputs/stun_events.json` | Captured WebRTC/STUN leak events |
+| `outputs/reports/` | JSON, PDF, CSV reports with SHA-256 hashes |
+| `outputs/logs/` | Timestamped forensic audit trail |
+| `outputs/pcaps/` | Captured SIP/RTP traffic |
+| `outputs/subpoenas/` | Legal request PDFs |
+| `outputs/feed_cache/` | Threat feed cache (6-hour TTL) |
+| `outputs/cases.db` | SQLite investigation database |
 
 ---
 
@@ -380,37 +258,59 @@ All outputs are organized under the `outputs/` directory:
 
 ```
 voip-osint-apex/
-├── main.py                          # CLI entry point (18 commands)
-├── requirements.txt                 # Python dependencies
-├── .env.example                     # API key template
-├── .env                             # Your API keys (git-ignored)
-├── realtime.py                      # Realtime streaming placeholder
+├── main.py                      # CLI entry point (18+ commands)
+├── realtime.py                  # Async event bus (pub/sub)
+├── requirements.txt             # Python dependencies
+├── Dockerfile                   # Production Docker image
+├── docker-compose.yml           # Docker Compose stack (apex + redis)
+├── quickstart.sh                # Linux/Kali one-command launch
+├── quickstart.ps1               # Windows PowerShell launch
+├── .env.example                 # API key template
 ├── modules/
-│   ├── number_lookup.py             # Phone number intelligence
-│   ├── ip_intel.py                  # IP reputation & geolocation
-│   ├── domain_lookup.py             # WHOIS, DNS, crt.sh
-│   ├── sip_parser.py                # SIP/RTP packet parsing
-│   ├── port_scan.py                 # Nmap, Masscan, SIPVicious
-│   ├── osint_engine.py              # Holehe, theHarvester, DNSRecon
-│   ├── network_mapper.py            # VoIP path tracing & fingerprinting
-│   ├── threat_correlator.py         # Evidence correlation engine
-│   ├── report.py                    # JSON/PDF/CSV report generation
-│   ├── webrtc_tracker.py            # WebRTC/STUN IP leak detection
-│   ├── carrier_intel.py             # HLR / carrier intelligence
-│   ├── threat_feeds.py              # Autonomous blacklist checking
-│   ├── call_graph.py                # SIP call flow visualizer
-│   ├── number_permutator.py         # Phone number variant generator
-│   ├── passive_dns.py               # Historical DNS tracking
-│   └── subpoena_generator.py        # Legal document PDF builder
+│   ├── number_lookup.py         # Phone number intelligence
+│   ├── ip_intel.py              # IP reputation & geolocation
+│   ├── domain_lookup.py         # WHOIS, DNS, crt.sh
+│   ├── sip_parser.py            # SIP/RTP packet parsing
+│   ├── port_scan.py             # Nmap, Masscan, SIPVicious
+│   ├── osint_engine.py          # Holehe, theHarvester, DNSRecon
+│   ├── network_mapper.py        # VoIP path tracing & fingerprinting
+│   ├── threat_correlator.py     # Evidence correlation + MITRE ATT&CK
+│   ├── report.py                # JSON/PDF/CSV + SHA-256 evidence log
+│   ├── webrtc_tracker.py        # WebRTC/STUN IP leak detection
+│   ├── carrier_intel.py         # HLR/carrier intelligence
+│   ├── threat_feeds.py          # Blacklist checking (6+ feeds)
+│   ├── call_graph.py            # SIP call flow visualizer
+│   ├── number_permutator.py     # Phone number variant generator
+│   ├── passive_dns.py           # Historical DNS tracking
+│   └── subpoena_generator.py    # Legal document PDF builder
 ├── utils/
-│   ├── logger.py                    # Audit logging
-│   ├── cache.py                     # Redis caching layer
-│   └── case_db.py                   # SQLite case management
-└── outputs/                         # All generated files
+│   ├── config.py                # APIKeys singleton (all keys)
+│   ├── logger.py                # Forensic audit logging
+│   ├── cache.py                 # Redis caching layer
+│   ├── case_db.py               # Async SQLite case management
+│   ├── rate_limiter.py          # Per-API token-bucket rate limiter
+│   └── exceptions.py            # Custom exception hierarchy
+└── outputs/                     # All generated files
 ```
 
 ---
 
-> ⚠️ **LEGAL DISCLAIMER**  
-> **FOR LAW ENFORCEMENT AND AUTHORIZED SECURITY PERSONNEL ONLY.**  
-> This tool is intended for legal and authorized investigative purposes. Ensure you have explicit authorization to monitor networks or analyze specified targets.
+## 🔗 Kali Linux Tool Integrations
+
+| APEX Module | Pairs With |
+| :--- | :--- |
+| `port_scan.py` | `zenmap`, `msfconsole` SIP auxiliaries |
+| `sip_parser.py` | `sngrep`, Wireshark VoIP filter |
+| `network_mapper.py` | `mtr`, `netdiscover`, `traceroute` |
+| `osint_engine.py` | Maltego, `recon-ng`, `amass` |
+| `domain_lookup.py` | `dig`, `dnsx`, `subfinder` |
+| `webrtc_tracker.py` | Burp Suite, `mitmproxy` |
+| `report.py` + `subpoena_generator.py` | Chain-of-custody evidence packages |
+
+---
+
+> ⚠️ **LEGAL DISCLAIMER**
+> **FOR LAW ENFORCEMENT AND AUTHORIZED SECURITY PERSONNEL ONLY.**
+> This tool is intended exclusively for legal and authorized investigative purposes.
+> Ensure you have explicit written authorization before monitoring networks or analyzing any targets.
+> Unauthorized use may violate computer crime laws including the CFAA, CMA, and GDPR.

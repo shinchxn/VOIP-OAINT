@@ -421,8 +421,8 @@ def cmd_subpoena(case_id, number, platform, ip, domain, officer, badge, agency):
     console.print(f"[green]Subpoena PDF → {path}[/green]")
 
 
-@cli.command("status")
-def cmd_status():
+@cli.command("keys")
+def cmd_keys():
     """Show API key status and system configuration."""
     print_banner()
     from utils.config import get_keys

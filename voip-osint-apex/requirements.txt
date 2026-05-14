@@ -18,6 +18,7 @@ python-nmap>=0.7.1
 scapy>=2.5.0
 pyshark>=0.6.0
 dpkt>=1.9.8
+sipvicious>=0.3.4
 
 # ── CLI & Display ──────────────────────────────────────────
 rich>=13.7.0
@@ -27,7 +28,6 @@ tqdm>=4.66.0
 
 # ── Reports & Storage ─────────────────────────────────────
 reportlab>=4.1.0
-pandas>=2.2.0
 redis>=5.0.0
 
 # ── Resilience ─────────────────────────────────────────────
@@ -35,3 +35,6 @@ tenacity>=8.2.0
 pycryptodome>=3.20.0
 psutil>=5.9.0
 nest-asyncio>=1.6.0
+
+# ── Telegram Bot Interface ─────────────────────────────────
+python-telegram-bot>=20.7

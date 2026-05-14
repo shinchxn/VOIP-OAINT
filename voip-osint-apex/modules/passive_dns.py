@@ -12,8 +12,10 @@ import logging
 import requests
 from datetime import datetime
 from typing import Optional
+from utils.config import get_keys
 
 log = logging.getLogger("passive_dns")
+keys = get_keys()
 
 HACKERTARGET_URL    = "https://api.hackertarget.com/hostsearch/"
 SECURITYTRAILS_URL  = "https://api.securitytrails.com/v1/history/{domain}/dns/a"
@@ -45,7 +47,7 @@ def passive_dns(domain: str) -> dict:
         result["errors"].append(f"hackertarget: {e}")
 
     # Source 2 — SecurityTrails (key optional)
-    st_key = os.getenv("SECURITYTRAILS_KEY")
+    st_key = keys.securitytrails
     if st_key:
         try:
             r = requests.get(

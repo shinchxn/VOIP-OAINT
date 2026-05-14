@@ -1,0 +1,89 @@
+# ══════════════════════════════════════════════════════════════
+#  VoIP OSINT APEX v3.0 — Docker Compose Stack
+#  Services: apex (tool), redis (cache), wireshark-ui (optional)
+# ══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Main APEX Tool ─────────────────────────────────────────
+  apex:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: voip-osint-apex:3.0
+    container_name: voip-apex
+    restart: unless-stopped
+
+    # Env from .env file (your API keys)
+    env_file:
+      - .env
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - VOIP_OUTPUT_DIR=/app/outputs
+
+    # Mount outputs so reports land on host
+    volumes:
+      - ./outputs:/app/outputs
+      - ./pcap_drop:/app/pcap_drop:ro    # Drop PCAPs here for analysis
+
+    # Network capabilities for raw socket / scapy / tcpdump
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    # Required for tcpdump/tshark host capture
+    network_mode: host
+
+    # Keep alive for exec-based use
+    stdin_open: true
+    tty: true
+
+    # Default: show help. Override with: docker compose run apex <command>
+    command: ["--help"]
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Redis Cache ────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: voip-apex-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"   # Only localhost exposure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Telegram Bot Interface (optional — uncomment to enable) ─
+  # bot:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   image: voip-osint-apex:3.0
+  #   container_name: voip-apex-bot
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - VOIP_OUTPUT_DIR=/app/outputs
+  #   volumes:
+  #     - ./outputs:/app/outputs
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - NET_RAW
+  #   command: ["bot", "--start"]
+  #   depends_on:
+  #     - redis
+
+# ── Volumes ────────────────────────────────────────────────
+volumes:
+  redis_data:
+    driver: local

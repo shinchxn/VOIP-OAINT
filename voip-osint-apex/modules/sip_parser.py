@@ -4,8 +4,11 @@ import pyshark
 from scapy.all import sniff, IP, UDP, Raw
 # pyrefly: ignore [missing-import]
 import dpkt
+import asyncio
 
 import logging
+from realtime import emit
+
 log = logging.getLogger("sip_parser")
 
 def parse_pcap(file_path):
@@ -80,6 +83,14 @@ def live_sniff(callback, iface="eth0"):
                         elif line.startswith("X-Forwarded-For:"): data["x_forwarded_for"] = line.split(":", 1)[1].strip()
                     
                     callback(data)
+
+                    # Emit real-time event
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(emit("SIP_INVITE", data, severity="WARNING"))
+                    except RuntimeError:
+                        asyncio.run(emit("SIP_INVITE", data, severity="WARNING"))
+                        
             except Exception as e:
                 log.debug(f"[Live] Packet processing error: {e}")
     try:

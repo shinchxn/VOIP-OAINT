@@ -1,0 +1,51 @@
+# ── Python cache ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.Python
+
+# ── Virtual environments ─────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+.env.local
+
+# ── Secrets — NEVER bake into image ──────────────────────────
+.env
+*.key
+*.pem
+*.cert
+
+# ── Outputs — mount as volume instead ────────────────────────
+outputs/
+pcap_drop/
+
+# ── Development & editor files ───────────────────────────────
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Test & CI ────────────────────────────────────────────────
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# ── OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Documentation (not needed in image) ──────────────────────
+*.md
+docs/
