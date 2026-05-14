@@ -40,7 +40,7 @@
 | Module | Description |
 | :--- | :--- |
 | 🛰️ **WebRTC/STUN Tracker** | Captures real IPs leaking from WhatsApp, Telegram, Google Meet via STUN — bypasses VPN cover. |
-| 📶 **HLR / Carrier Intel** | IMSI/SS7 awareness — roaming, porting, active status via `hlr-lookups.com` + Numverify fallback. |
+| 📶 **HLR / Carrier Intel** | IMSI/SS7 awareness — roaming, porting, active status via `Numverify` (free tier ready). |
 | 🛡️ **Threat Feeds** | Autonomous blacklist checking against 6+ VoIP/abuse feeds with 6-hour local cache. |
 | 🌳 **Call Graph Visualizer** | ASCII call flow trees from SIP data + Mermaid diagram export for HTML reports. |
 | 🗄️ **Case Management** | Async SQLite case storage — save, search, reload, export all investigations. |
@@ -207,7 +207,6 @@ Copy `.env.example` to `.env` and populate:
 | `ABUSEIPDB_KEY` | [AbuseIPDB](https://abuseipdb.com/) | ✅ Free tier |
 | `VIRUSTOTAL_KEY` | [VirusTotal](https://virustotal.com/) | ✅ Free tier |
 | `NUMVERIFY_KEY` | [Numverify](https://numverify.com/) | ✅ 100 req/mo |
-| `HLRLOOKUPS_KEY` | [hlr-lookups.com](https://www.hlr-lookups.com/) | 💰 €0.01/lookup |
 | `SECURITYTRAILS_KEY` | [SecurityTrails](https://securitytrails.com/) | ✅ Free tier |
 | `HIBP_KEY` | [HaveIBeenPwned](https://haveibeenpwned.com/API/Key) | 💰 Paid |
 

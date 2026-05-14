@@ -18,11 +18,7 @@ from realtime import emit
 log = logging.getLogger("carrier_intel")
 keys = get_keys()
 
-MCC_TABLE = {
-    "404": "India", "405": "India",
-    "310": "USA",   "311": "USA",
-    "234": "UK",    "505": "Australia",
-}
+
 
 @dataclass
 class CarrierResult:
@@ -55,15 +51,12 @@ class CarrierPlugin(BasePlugin):
     async def run(self, target: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         number = self._normalize(target)
         
-        # Try primary HLR (hlr-lookups.com)
-        result = await self._try_hlr_lookups(number)
+        # Numverify is now the primary carrier/HLR intelligence source.
+        # Primary HLR (hlr-lookups.com) removed per user request.
+        result = await self._try_numverify(number)
         
-        # Fallback to Numverify if primary fails or is limited
-        if not result.valid or result.error:
-            log.warning(f"[HLR] Primary failed, trying fallback for {number}...")
-            fallback = await self._try_numverify(number)
-            if fallback.valid:
-                result = fallback
+        if not result.valid:
+            log.warning(f"[HLR] Numverify lookup failed for {number}: {result.error}")
 
         self._log_result(result)
         result_dict = asdict(result)
@@ -84,56 +77,11 @@ class CarrierPlugin(BasePlugin):
 
         return result_dict
 
-    async def _try_hlr_lookups(self, number: str) -> CarrierResult:
-        """
-        Uses hlr-lookups.com REST API v2.
-        Free tier: 50 lookups/month. Obtain key at https://www.hlr-lookups.com
-        Set HLRLOOKUPS_KEY in .env to activate.
-        """
-        if not keys.hlrlookups:
-            return CarrierResult(number=number, error="No HLRLOOKUPS_KEY configured")
 
-        url = "https://www.hlr-lookups.com/api/synchronous-hlr-lookup"
-        params = {"username": "api", "password": keys.hlrlookups, "msisdn": number}
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url, params=params,
-                    timeout=aiohttp.ClientTimeout(total=15)
-                ) as r:
-                    if r.status == 401:
-                        return CarrierResult(number=number, error="Invalid HLRLOOKUPS_KEY (HTTP 401)")
-                    if r.status == 429:
-                        return CarrierResult(number=number, error="HLR-Lookups rate limit hit (HTTP 429)")
-                    if r.status != 200:
-                        return CarrierResult(number=number, error=f"HTTP {r.status}")
-                    d = await r.json()
-                    # hlr-lookups.com response schema:
-                    # {"success": true, "results": [{"msisdn": ..., "network": ..., "status": ..., ...}]}
-                    if not d.get("success"):
-                        return CarrierResult(number=number, error=d.get("error", "HLR lookup failed"))
-                    res = (d.get("results") or [{}])[0]
-                    mcc = str(res.get("mcc", ""))
-                    return CarrierResult(
-                        number           = number,
-                        mcc              = mcc,
-                        mnc              = str(res.get("mnc", "")),
-                        country          = MCC_TABLE.get(mcc, res.get("country_name")),
-                        original_carrier = res.get("original_network_name"),
-                        current_carrier  = res.get("network_name"),
-                        ported           = bool(res.get("ported", False)),
-                        roaming          = bool(res.get("roaming", False)),
-                        valid            = bool(res.get("status") == "HLRSTATUS_DELIVERED"),
-                        line_type        = res.get("gsm_product_type"),
-                    )
-        except aiohttp.ClientError as e:
-            return CarrierResult(number=number, error=f"Network error: {e}")
-        except Exception as e:
-            return CarrierResult(number=number, error=str(e))
 
     async def _try_numverify(self, number: str) -> CarrierResult:
         """
-        Uses Numverify (apilayer.net) as HLR fallback.
+        Uses Numverify (apilayer.net) for carrier intelligence.
         Free tier: 100 requests/month. Set NUMVERIFY_KEY in .env.
         """
         if not keys.numverify:

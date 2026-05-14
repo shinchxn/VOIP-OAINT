@@ -30,7 +30,6 @@ class APIKeys:
     numverify: Optional[str] = None
     securitytrails: Optional[str] = None
     hibp: Optional[str] = None
-    hlrlookups: Optional[str] = None
     telegram_token: Optional[str] = None
 
     def __post_init__(self):
@@ -41,7 +40,6 @@ class APIKeys:
         self.numverify = self._load("NUMVERIFY_KEY")
         self.securitytrails = self._load("SECURITYTRAILS_KEY")
         self.hibp = self._load("HIBP_KEY")
-        self.hlrlookups = self._load("HLRLOOKUPS_KEY")
         self.telegram_token = self._load("TELEGRAM_BOT_TOKEN")
 
     @staticmethod
@@ -63,7 +61,6 @@ class APIKeys:
             "numverify": self.is_configured("numverify"),
             "securitytrails": self.is_configured("securitytrails"),
             "hibp": self.is_configured("hibp"),
-            "hlrlookups": self.is_configured("hlrlookups"),
             "telegram_bot": self.is_configured("telegram_token"),
         }
 
