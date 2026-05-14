@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # ── App user (non-root for security, but with net_raw cap for scapy) ──
 RUN groupadd -r apexuser && \
+    groupadd -f -r wireshark && \
     useradd -r -g apexuser -d /app -s /bin/bash -G wireshark apexuser && \
     # Allow non-root tshark capture
     chgrp wireshark /usr/bin/dumpcap && \
