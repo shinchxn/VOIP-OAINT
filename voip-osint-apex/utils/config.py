@@ -1,5 +1,5 @@
 """
-VoIP OSINT APEX — Centralized Configuration Manager
+VoIP OSINT APEX v3.0 — Centralized Configuration Manager
 Single source of truth for all API keys, paths, and settings.
 Replaces scattered load_dotenv() calls across modules.
 """
@@ -10,8 +10,8 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
-# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
+from utils.exceptions import APIKeyMissingError
 
 log = logging.getLogger("config")
 
@@ -30,17 +30,15 @@ class APIKeys:
     numverify: Optional[str] = None
     securitytrails: Optional[str] = None
     hibp: Optional[str] = None
-    telegram_token: Optional[str] = None
 
     def __post_init__(self):
-        self.ipqs = self._load("IPQS_KEY")
-        self.shodan = self._load("SHODAN_KEY")
-        self.abuseipdb = self._load("ABUSEIPDB_KEY")
-        self.virustotal = self._load("VIRUSTOTAL_KEY")
-        self.numverify = self._load("NUMVERIFY_KEY")
+        self.ipqs          = self._load("IPQS_KEY")
+        self.shodan        = self._load("SHODAN_KEY")
+        self.abuseipdb     = self._load("ABUSEIPDB_KEY")
+        self.virustotal    = self._load("VIRUSTOTAL_KEY")
+        self.numverify     = self._load("NUMVERIFY_KEY")
         self.securitytrails = self._load("SECURITYTRAILS_KEY")
-        self.hibp = self._load("HIBP_KEY")
-        self.telegram_token = self._load("TELEGRAM_BOT_TOKEN")
+        self.hibp          = self._load("HIBP_KEY")
 
     @staticmethod
     def _load(env_var: str) -> Optional[str]:
@@ -49,20 +47,28 @@ class APIKeys:
             return None
         return val
 
+    def get(self, key_name: str, required: bool = False) -> Optional[str]:
+        """
+        Get a key value by name.
+        Raises APIKeyMissingError if required=True and key not set.
+        """
+        val = getattr(self, key_name, None)
+        if required and val is None:
+            raise APIKeyMissingError(key_name)
+        return val
+
     def is_configured(self, key_name: str) -> bool:
         return getattr(self, key_name, None) is not None
 
+    def status(self) -> dict[str, str]:
+        """Returns {key_name: 'SET'/'MISSING'} for all keys."""
+        keys = ["ipqs", "shodan", "abuseipdb", "virustotal",
+                "numverify", "securitytrails", "hibp"]
+        return {k: ("SET" if getattr(self, k) else "MISSING") for k in keys}
+
     def report_status(self) -> dict[str, bool]:
-        return {
-            "ipqs": self.is_configured("ipqs"),
-            "shodan": self.is_configured("shodan"),
-            "abuseipdb": self.is_configured("abuseipdb"),
-            "virustotal": self.is_configured("virustotal"),
-            "numverify": self.is_configured("numverify"),
-            "securitytrails": self.is_configured("securitytrails"),
-            "hibp": self.is_configured("hibp"),
-            "telegram_bot": self.is_configured("telegram_token"),
-        }
+        """Returns {key_name: bool} for all keys."""
+        return {k: (v == "SET") for k, v in self.status().items()}
 
 
 @dataclass
@@ -71,14 +77,21 @@ class AppConfig:
     version: str = "3.0"
     project_root: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent)
     output_dir: Path = field(default_factory=lambda: Path("outputs"))
-    cache_ttl: int = 3600          # 1 hour default
-    feed_cache_ttl: int = 21600    # 6 hours for threat feeds
-    http_timeout: int = 10         # seconds
+    cache_ttl: int = 3600           # 1 hour default
+    feed_cache_ttl: int = 21600     # 6 hours for threat feeds
+    http_timeout: int = 10          # seconds
     max_retries: int = 3
     debug: bool = False
+    redis_host: str = "localhost"
+    redis_port: int = 6379
 
     def __post_init__(self):
-        self.debug = os.getenv("VOIP_DEBUG", "").lower() in ("1", "true", "yes")
+        self.debug      = os.getenv("VOIP_DEBUG", "").lower() in ("1", "true", "yes")
+        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+        self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
+        output_env = os.getenv("VOIP_OUTPUT_DIR", "")
+        if output_env:
+            self.output_dir = Path(output_env)
 
     def ensure_output_dirs(self):
         """Create all required output directories."""
@@ -119,9 +132,9 @@ def get_config() -> AppConfig:
 def print_key_status():
     """Log which API keys are configured vs missing."""
     keys = get_keys()
-    status = keys.report_status()
-    configured = [k for k, v in status.items() if v]
-    missing = [k for k, v in status.items() if not v]
+    status = keys.status()
+    configured = [k for k, v in status.items() if v == "SET"]
+    missing    = [k for k, v in status.items() if v == "MISSING"]
 
     if configured:
         log.info(f"[Config] API keys active: {', '.join(configured)}")

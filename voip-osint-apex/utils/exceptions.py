@@ -1,66 +1,66 @@
 """
-VoIP OSINT APEX — Custom Exception Hierarchy
-Forensic-grade error classification for audit trails.
+VoIP OSINT APEX v3.0 — Custom Exception Hierarchy
+All platform exceptions inherit from VoipOSINTError.
 """
 
 
-class VoIPOSINTError(Exception):
-    """Base exception for all VoIP OSINT operations."""
+class VoipOSINTError(Exception):
+    """Base exception for all VoIP OSINT APEX errors."""
     pass
 
 
-class APIError(VoIPOSINTError):
-    """Remote API returned an error or unexpected response."""
-
-    def __init__(self, service: str, message: str, status_code: int = None):
-        self.service = service
-        self.status_code = status_code
-        super().__init__(f"[{service}] {message}" + (f" (HTTP {status_code})" if status_code else ""))
+class APIKeyMissingError(VoipOSINTError):
+    """Raised when a required API key is not configured."""
+    def __init__(self, key_name: str):
+        self.key_name = key_name
+        super().__init__(f"API key not configured: {key_name}. Set it in your .env file.")
 
 
-class RateLimitError(APIError):
-    """API rate limit exceeded (HTTP 429)."""
-
-    def __init__(self, service: str, retry_after: int = None):
+class RateLimitError(VoipOSINTError):
+    """Raised when an API rate limit is exceeded."""
+    def __init__(self, api_name: str, retry_after: float = 0):
+        self.api_name = api_name
         self.retry_after = retry_after
-        msg = "Rate limit exceeded"
-        if retry_after:
-            msg += f" — retry after {retry_after}s"
-        super().__init__(service, msg, status_code=429)
+        super().__init__(f"Rate limit hit for {api_name}. Retry after {retry_after:.1f}s.")
 
 
-class AuthenticationError(APIError):
-    """API key missing, invalid, or expired."""
-
-    def __init__(self, service: str):
-        super().__init__(service, "Authentication failed — check API key in .env", status_code=401)
-
-
-class NetworkError(VoIPOSINTError):
-    """Network connectivity failure (timeout, DNS, connection refused)."""
-
-    def __init__(self, service: str, original: Exception = None):
-        self.original = original
-        msg = f"[{service}] Network error"
-        if original:
-            msg += f": {type(original).__name__}: {original}"
-        super().__init__(msg)
+class NetworkError(VoipOSINTError):
+    """Raised on network connectivity failures."""
+    def __init__(self, url: str, reason: str):
+        self.url = url
+        self.reason = reason
+        super().__init__(f"Network error reaching {url}: {reason}")
 
 
-class ParseError(VoIPOSINTError):
-    """Failed to parse response data or packet content."""
-
-    def __init__(self, source: str, message: str = "Malformed data"):
+class ParseError(VoipOSINTError):
+    """Raised when data parsing fails."""
+    def __init__(self, source: str, reason: str):
         self.source = source
-        super().__init__(f"[{source}] Parse error: {message}")
+        self.reason = reason
+        super().__init__(f"Parse error in {source}: {reason}")
 
 
-class ForensicIntegrityError(VoIPOSINTError):
-    """Evidence hash mismatch or data tampering detected."""
+class CacheError(VoipOSINTError):
+    """Raised on cache read/write failures."""
+    def __init__(self, operation: str, reason: str):
+        self.operation = operation
+        self.reason = reason
+        super().__init__(f"Cache {operation} failed: {reason}")
 
-    def __init__(self, file_path: str, expected: str = None, actual: str = None):
-        self.file_path = file_path
-        msg = f"Integrity violation: {file_path}"
-        if expected and actual:
-            msg += f" (expected={expected[:16]}… got={actual[:16]}…)"
-        super().__init__(msg)
+
+class ScanError(VoipOSINTError):
+    """Raised when a network scan operation fails."""
+    def __init__(self, target: str, reason: str):
+        self.target = target
+        self.reason = reason
+        super().__init__(f"Scan failed for {target}: {reason}")
+
+
+class ReportError(VoipOSINTError):
+    """Raised when report generation fails."""
+    pass
+
+
+class DatabaseError(VoipOSINTError):
+    """Raised on case database failures."""
+    pass

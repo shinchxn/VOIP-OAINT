@@ -1,127 +1,81 @@
+"""
+VoIP OSINT APEX v3.0 — Reporting Engine
+Generates forensic PDF reports with SHA-256 hashes.
+"""
+
 import json
-import os
-import csv
-from datetime import datetime
-import hashlib
 import logging
-# pyrefly: ignore [missing-import]
-from reportlab.pdfgen import canvas
-# pyrefly: ignore [missing-import]
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any
+import hashlib
+
 from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+
+from utils.config import get_config
 
 log = logging.getLogger("report")
-os.makedirs("outputs/reports", exist_ok=True)
 
-
-def generate_json(data):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = f"outputs/reports/report_{timestamp}.json"
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4, default=str)
-    log.info(f"[Report] JSON → {path}")
-    return path
-
-
-def generate_pdf(data):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = f"outputs/reports/report_{timestamp}.pdf"
-    c = canvas.Canvas(path, pagesize=letter)
+def generate_pdf(case_id: str, data: Dict[str, Any]) -> str:
+    """Generate a forensic PDF report."""
+    cfg = get_config()
+    out_dir = cfg.output_dir / "reports"
+    out_dir.mkdir(parents=True, exist_ok=True)
     
-    # Page 1: Summary
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, 750, "VoIP OSINT APEX - Investigation Report")
-    c.setFont("Helvetica", 12)
-    # Use SHA-256 for forensic-grade case IDs (not MD5)
-    case_hash = hashlib.sha256(str(timestamp).encode()).hexdigest()[:12].upper()
-    c.drawString(50, 730, f"Case ID: {case_hash}")
-    c.drawString(50, 710, f"Date: {timestamp}")
-    c.drawString(50, 690, "Tool version: 3.0")
+    filename = f"{case_id}.pdf"
+    filepath = out_dir / filename
     
-    risk = "LOW"
-    conf = 0
-    if "correlation" in data:
-        conf = data["correlation"].get("confidence", 0)
-        risk = "CRITICAL" if conf > 80 else "HIGH" if conf > 50 else "MEDIUM" if conf > 30 else "LOW"
-    elif "number" in data:
-        risk = data["number"].get("risk_level", "LOW")
+    doc = SimpleDocTemplate(str(filepath), pagesize=letter)
+    styles = getSampleStyleSheet()
+    Story = []
+    
+    # Title
+    Story.append(Paragraph(f"VoIP OSINT APEX v3.0 — Forensic Report", styles["Title"]))
+    Story.append(Spacer(1, 12))
+    Story.append(Paragraph(f"Case ID: {case_id}", styles["Heading2"]))
+    Story.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}", styles["Normal"]))
+    Story.append(Spacer(1, 12))
+    
+    # Correlation Summary
+    corr = data.get("correlation", {})
+    Story.append(Paragraph("Executive Summary", styles["Heading2"]))
+    Story.append(Paragraph(f"Risk Level: {corr.get('risk_level', 'UNKNOWN')}", styles["Normal"]))
+    Story.append(Paragraph(f"Confidence Score: {corr.get('confidence_score', 0)}/100", styles["Normal"]))
+    Story.append(Spacer(1, 6))
+    for ev in corr.get("evidence", []):
+        Story.append(Paragraph(f"• {ev}", styles["Normal"]))
+    Story.append(Spacer(1, 12))
+    
+    # Targets
+    num = data.get("number", {}).get("number", {}).get("international_format", "N/A")
+    ip = data.get("ip", {}).get("ip", "N/A")
+    dom = data.get("domain", {}).get("domain", "N/A")
+    
+    Story.append(Paragraph("Targets Analysed", styles["Heading2"]))
+    Story.append(Paragraph(f"Phone Number: {num}", styles["Normal"]))
+    Story.append(Paragraph(f"IP Address: {ip}", styles["Normal"]))
+    Story.append(Paragraph(f"Domain: {dom}", styles["Normal"]))
+    Story.append(Spacer(1, 12))
+    
+    doc.build(Story)
+    
+    # Generate SHA-256 for integrity
+    hasher = hashlib.sha256()
+    with open(filepath, 'rb') as f:
+        hasher.update(f.read())
+    file_hash = hasher.hexdigest()
+    
+    log.info(f"[Report] PDF generated: {filepath} (SHA256: {file_hash})")
+    return str(filepath)
+    
+def generate_json(case_id: str, data: Dict[str, Any]) -> str:
+    """Export full raw JSON."""
+    cfg = get_config()
+    filepath = cfg.output_dir / "reports" / f"{case_id}.json"
+    
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=2, default=str)
         
-    c.drawString(50, 670, f"Overall Risk Level: {risk}")
-    c.drawString(50, 650, f"Confidence Score: {conf}%")
-    
-    # Next pages
-    y = 610
-    for section, content in data.items():
-        if y < 100:
-            c.showPage()
-            y = 750
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(50, y, f"--- {str(section).upper()} ---")
-        y -= 20
-        c.setFont("Helvetica", 10)
-        if isinstance(content, dict):
-            for k, v in content.items():
-                if y < 50:
-                    c.showPage()
-                    y = 750
-                c.drawString(70, y, f"{k}: {str(v)[:80]}")
-                y -= 15
-        elif isinstance(content, list):
-            for item in content:
-                if y < 50:
-                    c.showPage()
-                    y = 750
-                c.drawString(70, y, f"- {str(item)[:80]}")
-                y -= 15
-        y -= 10
-        
-    c.setFont("Helvetica-Oblique", 10)
-    c.drawString(50, 30, "FOR LAW ENFORCEMENT USE ONLY")
-    c.save()
-    
-    # SHA-256 evidence integrity hash
-    file_hash = _sha256_file(path)
-    log.info(f"[Report] PDF → {path}  SHA-256: {file_hash}")
-    
-    # Evidence log
-    generate_evidence_log({"pdf_path": path, "sha256": file_hash})
-        
-    return path
-
-
-def generate_csv(data):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = f"outputs/reports/report_{timestamp}.csv"
-    
-    flat_data = {}
-    for k, v in data.items():
-        if isinstance(v, dict):
-            for k2, v2 in v.items():
-                flat_data[f"{k}_{k2}"] = v2
-        else:
-            flat_data[k] = v
-            
-    with open(path, "w", newline='') as f:
-        w = csv.writer(f)
-        w.writerow(flat_data.keys())
-        w.writerow([str(v) for v in flat_data.values()])
-    log.info(f"[Report] CSV → {path}")
-    return path
-
-
-def generate_evidence_log(data):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = f"outputs/reports/audit_{timestamp}.log"
-    with open(path, "a") as f:
-        f.write(f"[{timestamp}] AUDIT RECORD\n")
-        f.write(json.dumps(data, indent=2, default=str))
-        f.write("\n")
-    return path
-
-
-def _sha256_file(path: str) -> str:
-    """Compute SHA-256 hash of a file for forensic integrity verification."""
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    return str(filepath)

@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timezone
-from typing import AsyncIterator, Callable, Optional
+from typing import AsyncIterator, Callable, Optional, Any, Coroutine
 
 log = logging.getLogger("realtime")
 
@@ -100,8 +100,11 @@ async def cli_live_printer(
         stop_event:   Signal to stop printing
         filter_types: Only print these event types (None = all)
     """
+    # pyrefly: ignore [missing-import]
     from rich.console import Console
+    # pyrefly: ignore [missing-import]
     from rich.panel   import Panel
+    # pyrefly: ignore [missing-import]
     from rich         import box
 
     console   = Console()
@@ -139,7 +142,7 @@ async def cli_live_printer(
 # ── Telegram event forwarder ─────────────────────────────────────────────────
 
 async def telegram_event_forwarder(
-    send_fn: Callable[[str], asyncio.coroutine],
+    send_fn: Callable[[str], Coroutine[Any, Any, Any]],
     stop_event: Optional[asyncio.Event] = None,
     min_severity: str = "WARNING",
 ) -> None:

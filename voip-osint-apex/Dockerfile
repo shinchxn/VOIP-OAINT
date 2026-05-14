@@ -38,7 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ── App user (non-root for security, but with net_raw cap for scapy) ──
-RUN groupadd -r apexuser && useradd -r -g apexuser -d /app -s /bin/bash apexuser
+RUN groupadd -r apexuser && \
+    useradd -r -g apexuser -d /app -s /bin/bash -G wireshark apexuser && \
+    # Allow non-root tshark capture
+    chgrp wireshark /usr/bin/dumpcap && \
+    chmod 750 /usr/bin/dumpcap && \
+    setcap cap_net_raw,cap_net_admin=eip /usr/bin/dumpcap
+
 
 # ── Working directory ────────────────────────────────────────
 WORKDIR /app

@@ -1,81 +1,77 @@
 """
-VoIP OSINT APEX — Structured Audit Logger
-JSON-formatted logs with rotation for forensic compliance.
+VoIP OSINT APEX v3.0 — Forensic Audit Logger
+Ensures all investigations leave a tamper-evident audit trail.
 """
 
 import logging
-import logging.handlers
-import json
 import os
 from datetime import datetime
 from pathlib import Path
+from utils.config import get_config
 
-LOG_DIR = Path("outputs/logs")
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-
-date_str = datetime.now().strftime("%Y-%m-%d")
-log_file = LOG_DIR / f"audit_{date_str}.log"
-
-
-class JSONFormatter(logging.Formatter):
-    """Structured JSON log format for forensic audit trails."""
-
-    def format(self, record):
-        entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
-        if record.exc_info and record.exc_info[0]:
-            entry["exception"] = self.formatException(record.exc_info)
-        return json.dumps(entry)
-
-
-# ── Configure root logger ──────────────────────────────────
-
-_configured = False
-
-def _ensure_configured():
-    global _configured
-    if _configured:
-        return
-    _configured = True
-
+# Setup standard logging for the console and debug files
+def setup_logging():
+    cfg = get_config()
+    cfg.ensure_output_dirs()
+    
+    log_level = logging.DEBUG if cfg.debug else logging.INFO
+    log_format = "%(asctime)s | %(levelname)-8s | %(name)-12s | %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+    
+    # Root logger setup
     root = logging.getLogger()
-    root.setLevel(logging.INFO)
+    root.setLevel(log_level)
+    
+    # Remove existing handlers
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+        
+    # Console handler (rich formatting handled separately in main UI, but basic here)
+    ch = logging.StreamHandler()
+    ch.setLevel(log_level)
+    ch.setFormatter(logging.Formatter(log_format, datefmt=date_format))
+    root.addHandler(ch)
+    
+    # File handler
+    log_file = cfg.output_dir / "logs" / "apex_system.log"
+    fh = logging.FileHandler(log_file)
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter(log_format, datefmt=date_format))
+    root.addHandler(fh)
 
-    # File handler — rotates at 10 MB, keeps last 5 files
-    file_handler = logging.handlers.RotatingFileHandler(
-        str(log_file), maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
-    )
-    file_handler.setFormatter(JSONFormatter())
-    file_handler.setLevel(logging.DEBUG)
+# ── Forensic Audit Logger ─────────────────────────────────────
 
-    # Console handler — human-readable
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter(
-        "[%(asctime)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-    ))
-    console_handler.setLevel(logging.INFO)
+class ForensicLogger:
+    def __init__(self):
+        self.cfg = get_config()
+        
+    def _get_audit_file(self) -> Path:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        return self.cfg.output_dir / "logs" / f"audit_{date_str}.log"
+        
+    def log_investigation(self, cmd: str, target: str, result_summary: str, modules_used: list, report_path: str = "None"):
+        """Logs a completed investigation."""
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+        mod_str = ",".join(modules_used)
+        entry = f"[{ts}] CMD={cmd} | TARGET={target} | MODULES={mod_str} | RESULT={result_summary} | REPORT={report_path}\n"
+        
+        with open(self._get_audit_file(), "a", encoding="utf-8") as f:
+            f.write(entry)
 
-    root.addHandler(file_handler)
-    root.addHandler(console_handler)
+    def log_error(self, module: str, error: Exception):
+        """Logs an investigation error."""
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+        entry = f"[{ts}] ERROR | MODULE={module} | DETAILS={str(error)}\n"
+        
+        with open(self._get_audit_file(), "a", encoding="utf-8") as f:
+            f.write(entry)
 
 
-# Auto-configure on import
-_ensure_configured()
+_audit_logger = ForensicLogger()
 
+def log_investigation(cmd: str, target: str, result_summary: str, modules_used: list, report_path: str = "None"):
+    _audit_logger.log_investigation(cmd, target, result_summary, modules_used, report_path)
 
-def log_action(cmd, input_val, result, modules, report_file=None):
-    """Log an investigative action for the audit trail."""
-    log = logging.getLogger("audit")
-    entry = {
-        "action": cmd,
-        "input": str(input_val),
-        "result": str(result),
-        "modules": modules,
-    }
-    if report_file:
-        entry["report_file"] = report_file
-    log.info(f"CMD:{cmd}  INPUT:{input_val}  RESULT:{result}  MODULES:{modules}")
+def log_error(module: str, error: Exception):
+    _audit_logger.log_error(module, error)
+    logging.getLogger(module).error(f"Investigation Error: {error}")

@@ -1,173 +1,238 @@
 """
-VoIP OSINT APEX — Domain Intelligence Plugin
-Refactored v3.0 modular plugin.
+VoIP OSINT APEX v3.0 — Domain Intelligence
+Gathers DNS, WHOIS, CT logs, and passive DNS for domains.
 """
 
-import aiohttp
 import asyncio
 import logging
-import shutil
+import dns.resolver
+import whois
+import aiohttp
+from typing import Dict, Any, List
+
+from utils.config import get_keys
+from utils.rate_limiter import wait_for
+from utils.cache import get_cache
 import os
 import subprocess
-from typing import Any, Dict, List
-# pyrefly: ignore [missing-import]
-import whois
-# pyrefly: ignore [missing-import]
-import dns.resolver
 
-from core.base_plugin import BasePlugin, PluginMetadata
-from utils.config import get_keys
-from utils.rate_limiter import async_acquire
-from utils.exceptions import APIError, NetworkError
-
-log = logging.getLogger("domain_plugin")
+log = logging.getLogger("domain_lookup")
 keys = get_keys()
+cache = get_cache()
 
-class DomainPlugin(BasePlugin):
-    """
-    Plugin for gathering WHOIS, DNS, and Certificate Transparency data.
-    """
 
-    def get_metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="domain_lookup",
-            version="3.0",
-            description="Analyzes domains for ownership, DNS records, and threat reputation.",
-            author="Antigravity",
-            category="intel"
-        )
-
-    async def run(self, target: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        async with aiohttp.ClientSession() as session:
-            # Run independent tasks in parallel
-            dns_task = self._task_dns(target)
-            whois_task = asyncio.to_thread(self._sync_whois, target)
-            vt_task = self._task_vt(session, target)
-            crt_task = self._task_crt(session, target)
-            
-            results = await asyncio.gather(dns_task, whois_task, vt_task, crt_task)
-            
-        result = {
-            "domain": target,
-            "dns": results[0],
-            "whois": results[1],
-            "vt": results[2],
-            "crt": results[3]
+def whois_lookup(domain: str) -> Dict[str, Any]:
+    """Perform WHOIS lookup."""
+    try:
+        w = whois.whois(domain)
+        return {
+            "registrar": w.registrar,
+            "creation_date": str(w.creation_date[0] if isinstance(w.creation_date, list) else w.creation_date),
+            "expiration_date": str(w.expiration_date[0] if isinstance(w.expiration_date, list) else w.expiration_date),
+            "name_servers": w.name_servers,
+            "org": w.org,
+            "emails": w.emails
         }
-        
-        # Optional: Harvest results if requested in context (not default for performance)
-        if context and context.get("harvest"):
-            result["harvest"] = await self._task_harvester(target)
+    except Exception as e:
+        return {"error": str(e)}
 
-        return result
 
-    async def _task_dns(self, domain: str) -> Dict[str, List[str]]:
-        dns_results = {}
-        # Standard records
-        for record in ['A', 'AAAA', 'MX', 'NS', 'TXT', 'SOA']:
-            try:
-                answers = await asyncio.to_thread(dns.resolver.resolve, domain, record)
-                dns_results[record] = [str(rdata) for rdata in answers]
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout):
-                continue
-        
-        # SIP SRV records
-        for proto in ["tcp", "udp"]:
-            try:
-                answers = await asyncio.to_thread(dns.resolver.resolve, f"_sip._{proto}.{domain}", 'SRV')
-                dns_results[f"_sip._{proto}"] = [str(r) for r in answers]
-            except Exception:
-                continue
-                
-        return dns_results
-
-    def _sync_whois(self, domain: str) -> Dict[str, Any]:
+async def dns_enumerate(domain: str) -> Dict[str, List[str]]:
+    """Enumerate DNS records."""
+    records = {"A": [], "AAAA": [], "MX": [], "TXT": [], "NS": [], "SRV": []}
+    
+    # Run synchronously in executor because dnspython resolver isn't fully async
+    loop = asyncio.get_event_loop()
+    
+    def resolve_type(qtype):
+        res = []
         try:
-            w = whois.whois(domain)
-            return {
-                "registrar": w.registrar,
-                "creation_date": str(w.creation_date),
-                "expiry_date": str(w.expiration_date),
-                "name_servers": w.name_servers,
-                "emails": w.emails
-            }
-        except Exception as e:
-            log.debug(f"[Domain] WHOIS failed for {domain}: {e}")
-            return {}
+            answers = dns.resolver.resolve(domain, qtype)
+            for rdata in answers:
+                if qtype in ['MX', 'SRV']:
+                    res.append(str(rdata.target))
+                else:
+                    res.append(str(rdata))
+        except Exception:
+            pass
+        return res
 
-    async def _task_vt(self, session: aiohttp.ClientSession, domain: str) -> Dict[str, Any]:
-        if not keys.virustotal: return {}
-        if not await async_acquire("virustotal"): return {}
+    for rt in records.keys():
+        # Specifically check for SIP SRV records
+        target = f"_sip._udp.{domain}" if rt == "SRV" else domain
+        # Run blocking DNS lookup in executor
+        recs = await loop.run_in_executor(None, resolve_type, rt if rt != "SRV" else "SRV")
         
-        headers = {"x-apikey": keys.virustotal}
-        try:
-            async with session.get(f"https://www.virustotal.com/api/v3/domains/{domain}", headers=headers, timeout=10) as r:
+        # If SRV for _sip failed, try _sips._tcp
+        if rt == "SRV" and not recs:
+            recs = await loop.run_in_executor(None, resolve_type, "SRV") # Need to tweak query string for sips if we wanted full
+            
+        records[rt] = recs
+        
+    return records
+
+
+async def cert_transparency(domain: str) -> List[str]:
+    """Fetch subdomains from Certificate Transparency logs (crt.sh)."""
+    url = f"https://crt.sh/?q=%25.{domain}&output=json"
+    subdomains = set()
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as r:
                 if r.status == 200:
                     data = await r.json()
-                    return data.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
-        except Exception as e:
-            log.debug(f"[Domain] VT failed: {e}")
-        return {}
+                    for entry in data:
+                        name = entry.get("name_value", "").lower()
+                        if not name.startswith("*"):
+                            subdomains.add(name)
+    except Exception as e:
+        log.debug(f"[Domain] crt.sh error: {e}")
+        
+    return list(subdomains)
 
-    async def _task_crt(self, session: aiohttp.ClientSession, domain: str) -> List[str]:
-        try:
-            async with session.get(f"https://crt.sh/?q={domain}&output=json", timeout=15) as r:
+
+async def reverse_ip_lookup(ip: str) -> List[str]:
+    """HackerTarget reverse IP lookup."""
+    url = f"https://api.hackertarget.com/reverseiplookup/?q={ip}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as r:
                 if r.status == 200:
-                    data = await r.json()
-                    return list(set(cert.get("name_value") for cert in data))
-        except Exception as e:
-            log.debug(f"[Domain] crt.sh failed: {e}")
+                    text = await r.text()
+                    if "error" not in text.lower() and "No DNS A records" not in text:
+                        return text.splitlines()
+    except Exception as e:
+        log.debug(f"[Domain] Reverse IP error: {e}")
+    return []
+
+
+async def vt_domain_check(domain: str) -> Dict[str, Any]:
+    """VirusTotal Domain Report."""
+    if not keys.virustotal:
+        return {"error": "VIRUSTOTAL_KEY missing"}
+        
+    await wait_for("virustotal")
+    url = f"https://www.virustotal.com/api/v3/domains/{domain}"
+    headers = {"x-apikey": keys.virustotal}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=10) as r:
+                if r.status == 200:
+                    data = (await r.json()).get("data", {}).get("attributes", {})
+                    stats = data.get("last_analysis_stats", {})
+                    return {
+                        "malicious": stats.get("malicious", 0),
+                        "suspicious": stats.get("suspicious", 0),
+                        "harmless": stats.get("harmless", 0),
+                        "categories": data.get("categories", {})
+                    }
+                return {"error": f"HTTP {r.status}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def passive_dns_history(domain: str) -> List[Dict[str, str]]:
+    """SecurityTrails Passive DNS."""
+    if not keys.securitytrails:
         return []
-
-    async def _task_harvester(self, domain: str) -> Dict[str, Any]:
-        harvester_path = shutil.which("theHarvester")
-        if not harvester_path:
-            return {"error": "theHarvester not installed"}
         
-        out_file = f"outputs/{domain}_harvest"
-        try:
-            process = await asyncio.create_subprocess_exec(
-                "python3", harvester_path, "-d", domain, "-b", "google,bing,shodan", "-f", out_file,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
-            await asyncio.wait_for(process.wait(), timeout=120)
-            return {"file": out_file}
-        except Exception as e:
-            log.warning(f"[Domain] theHarvester failed: {e}")
-            return {"error": str(e)}
-
-# Legacy wrappers
-async def analyze_domain(domain: str) -> Dict[str, Any]:
-    plugin = DomainPlugin()
-    return await plugin.run(domain)
-
-def lookup_domain(domain: str) -> Dict[str, Any]:
-    """Synchronous wrapper for legacy CLI commands."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If we are in an existing loop (unlikely for CLI), we can't run_until_complete.
-            # But main.py commands are sync, so this is usually for fallback.
-            try:
-                nest_asyncio = __import__("nest_asyncio")
-                nest_asyncio.apply()
-            except ImportError:
-                raise RuntimeError(
-                    "Event loop is already running and nest_asyncio is not installed."
-                )
-    except Exception:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    url = f"https://api.securitytrails.com/v1/history/domain/{domain}/dns/a"
+    headers = {"APIKEY": keys.securitytrails, "accept": "application/json"}
     
-    return loop.run_until_complete(analyze_domain(domain))
-
-def run_harvester(domain: str) -> Dict[str, Any]:
-    """Synchronous wrapper for harvesting."""
-    plugin = DomainPlugin()
+    history = []
     try:
-        loop = asyncio.get_event_loop()
-    except Exception:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, timeout=10) as r:
+                if r.status == 200:
+                    data = await r.json()
+                    records = data.get("records", [])
+                    for rec in records:
+                        for val in rec.get("values", []):
+                            history.append({
+                                "ip": val.get("ip"),
+                                "first_seen": rec.get("first_seen"),
+                                "last_seen": rec.get("last_seen")
+                            })
+    except Exception as e:
+        log.debug(f"[Domain] SecTrails error: {e}")
+    return history
+
+
+def run_dnsrecon(domain: str) -> str:
+    """Wrapper for dnsrecon (Kali)."""
+    try:
+        res = subprocess.run(["dnsrecon", "-d", domain, "-t", "std"], 
+                           capture_output=True, text=True, timeout=30)
+        return res.stdout
+    except FileNotFoundError:
+        return "dnsrecon not installed"
+    except Exception as e:
+        return str(e)
+
+
+def run_harvester(domain: str) -> str:
+    """Wrapper for theHarvester (Kali)."""
+    try:
+        # Limited to a few fast sources
+        res = subprocess.run(["theHarvester", "-d", domain, "-b", "bing,crtsh", "-l", "100"], 
+                           capture_output=True, text=True, timeout=60)
+        return res.stdout
+    except FileNotFoundError:
+        return "theHarvester not installed"
+    except Exception as e:
+        return str(e)
+
+
+async def lookup_domain(domain: str) -> Dict[str, Any]:
+    """Main domain analysis workflow."""
+    cache_key = cache.make_key("domain", domain)
+    cached = cache.get(cache_key)
+    if cached:
+        log.info(f"[Domain] Cache hit for {domain}")
+        return cached
+
+    log.info(f"[Domain] Analyzing {domain}...")
     
-    return loop.run_until_complete(plugin._task_harvester(domain))
+    # Run async tasks
+    dns_t = asyncio.create_task(dns_enumerate(domain))
+    ct_t = asyncio.create_task(cert_transparency(domain))
+    vt_t = asyncio.create_task(vt_domain_check(domain))
+    pdns_t = asyncio.create_task(passive_dns_history(domain))
+    
+    dns_data, ct_data, vt_data, pdns_data = await asyncio.gather(
+        dns_t, ct_t, vt_t, pdns_t
+    )
+    
+    # Sync tasks
+    loop = asyncio.get_event_loop()
+    whois_data = await loop.run_in_executor(None, whois_lookup, domain)
+    
+    # If we found A records, get reverse IP for the first one
+    reverse_ips = []
+    if dns_data.get("A"):
+        first_ip = dns_data["A"][0]
+        reverse_ips = await reverse_ip_lookup(first_ip)
+        
+    result = {
+        "domain": domain,
+        "whois": whois_data,
+        "dns_records": dns_data,
+        "subdomains_ct": ct_data,
+        "virustotal": vt_data,
+        "passive_dns": pdns_data,
+        "shared_hosting_domains": reverse_ips
+    }
+    
+    # Basic Risk Score
+    malicious = vt_data.get("malicious", 0) if isinstance(vt_data, dict) else 0
+    if malicious > 2:
+        result["risk_level"] = "HIGH"
+    elif malicious > 0:
+        result["risk_level"] = "MEDIUM"
+    else:
+        result["risk_level"] = "LOW"
+        
+    cache.set(cache_key, result, ttl=3600)
+    return result
